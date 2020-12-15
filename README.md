@@ -1,1 +1,1 @@
-# eks_templates
+EKSで環境構築するためのテンプレート

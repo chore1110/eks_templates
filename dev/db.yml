@@ -1,0 +1,135 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create Aurora MySQL Cluster
+
+Parameters:
+  VPC:
+    Description: "input VPC ID"
+    Type: "AWS::EC2::VPC::Id"
+    Default: ""
+  DBSubnetsInVPC:
+    Description: "input DB Subnets IDs"
+    Type: "List<AWS::EC2::Subnet::Id>"
+    Default: ""
+  DBMasterUser:
+    Description: "input DB Master User Name"
+    Type: "String"
+    Default: "root"
+  DBMasterPassword:
+    Description: "input DB Master User Password"
+    Type: "String"
+    Default: ""
+    NoEcho: true
+  DBInstanceClass:
+    Description: "select DB Instance Class"
+    Type: "String"
+    Default: "db.t2.small"
+    AllowedValues:
+      - db.t2.small
+      - db.t2.medium
+      - db.t2.large
+      - db.t2.xlarge
+      - db.t2.2xlarge
+      - db.r5.large
+      - db.r5.xlarge
+      - db.m5.large
+      - db.m5.xlarge
+  DBBackupRetentionPeriod:
+    Description: "The number of days for which automated backups are retained"
+    Type: "String"
+    Default: "7"
+  DBBackupWindow:
+    Description: "The daily time range during which automated backups (UTC)"
+    Type: "String"
+    Default: "18:00-18:30"
+  DBMaintenanceWindow:
+    Description: "The time range each week during which system maintenance (UTC)"
+    Type: "String"
+    Default: "Sat:19:00-Sat:20:00"
+  WorkerSecurityGroup:
+    Description: "security groups allowed to connect."
+    Type: "AWS::EC2::SecurityGroup::Id"
+
+Resources:
+  Aurora57SecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupName: !Sub "${AWS::StackName}-SecurityGroup"
+      GroupDescription: !Sub "${AWS::StackName}-SecurityGroup"
+      SecurityGroupEgress:
+        -
+          IpProtocol: "-1"
+          CidrIp: "0.0.0.0/0"
+      SecurityGroupIngress:
+        -
+          IpProtocol: "tcp"
+          SourceSecurityGroupId: !Ref "WorkerSecurityGroup"
+          FromPort: 3306
+          ToPort: 3306
+      VpcId: !Ref "VPC"
+  Aurora57dbSubnetGroup:
+    Type: "AWS::RDS::DBSubnetGroup"
+    Properties:
+      DBSubnetGroupDescription: !Sub "${AWS::StackName} Subnets available for the RDS DB Instance"
+      SubnetIds: !Ref "DBSubnetsInVPC"
+  Aurora57dbClusterParameterGroup:
+    Type: "AWS::RDS::DBClusterParameterGroup"
+    Properties:
+      Family: "aurora-mysql5.7"
+      Description: !Sub  "${AWS::StackName} Cluster Parameter Group"
+      Parameters:
+        time_zone: "Asia/Tokyo"
+  Aurora57dbOptionGroup:
+    Type: "AWS::RDS::OptionGroup"
+    Properties:
+      EngineName: "aurora-mysql"
+      MajorEngineVersion: "5.7"
+      OptionGroupDescription: !Sub "${AWS::StackName} RDS Option Group"
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-OptionGroup"
+  Aurora57dbInstanceParameterGroup:
+    Type: "AWS::RDS::DBParameterGroup"
+    Properties:
+      Family: "aurora-mysql5.7"
+      Description: !Sub "${AWS::StackName} Instance Parameter Group"
+  Aurora57dbCluster:
+    Type: "AWS::RDS::DBCluster"
+    Properties:
+      BackupRetentionPeriod: !Ref "DBBackupRetentionPeriod"
+      DatabaseName: "Aurora57db"
+      DBClusterIdentifier: !Sub "${AWS::StackName}-mysql-57-cluster"
+      DBClusterParameterGroupName: !Ref "Aurora57dbClusterParameterGroup"
+      DBSubnetGroupName: !Ref "Aurora57dbSubnetGroup"
+      Engine: "aurora-mysql"
+      MasterUsername: !Ref "DBMasterUser"
+      MasterUserPassword: !Ref "DBMasterPassword"
+      Port: 3306
+      PreferredBackupWindow: !Ref "DBBackupWindow"
+      PreferredMaintenanceWindow: !Ref "DBMaintenanceWindow"
+      StorageEncrypted: true
+      VpcSecurityGroupIds:
+        - !Ref "Aurora57SecurityGroup"
+      EnableCloudwatchLogsExports:
+        - general
+        - error
+        - slowquery
+        - audit
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-Aurora-MySQL-57-db-Cluster"
+  Aurora57dbInstance1:
+    Type: "AWS::RDS::DBInstance"
+    Properties:
+      AutoMinorVersionUpgrade: false
+      DBInstanceClass: !Ref "DBInstanceClass"
+      DBInstanceIdentifier: !Sub "${AWS::StackName}-instance-1"
+      DBClusterIdentifier: !Ref "Aurora57dbCluster"
+      DBSubnetGroupName: !Ref "Aurora57dbSubnetGroup"
+      Engine: "aurora-mysql"
+      OptionGroupName: !Ref "Aurora57dbOptionGroup"
+      DBParameterGroupName: !Ref "Aurora57dbInstanceParameterGroup"
+      PubliclyAccessible: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-Aurora-MySQL-57-db-Instance"

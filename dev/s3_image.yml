@@ -1,0 +1,23 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  TargetRegion:
+    Type: String
+    Default: ap-northeast-1
+
+  BucketBaseName:
+    Type: String
+    Default: test-frontend-dev
+
+Resources:
+  S3ImageBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Sub ${BucketBaseName}-upload-images
+
+Outputs:
+  S3ImageBucket:
+      Value: !Ref S3ImageBucket
+      Export:
+        Name: !Sub ${BucketBaseName}-S3ImageBucket
